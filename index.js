@@ -1,7 +1,8 @@
+
 import express from 'express';
 import cors from 'cors';
 import 'dotenv/config';
-import { MongoClient } from 'mongodb';
+import { MongoClient, ObjectId } from 'mongodb';
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -20,21 +21,79 @@ async function startServer() {
     console.log("MongoDB Connected Successfully!");
 
     const database = client.db("hireloopdb");
-    const usersCollection = database.collection("user");
 
+    // Collections
+    const usersCollection = database.collection("user");
+    const jobsCollection = database.collection("jobs");
+
+    // Home Route
     app.get('/', (req, res) => {
       res.send('Hello World!');
     });
 
+    // Get All Users
     app.get('/user', async (req, res) => {
       try {
         const result = await usersCollection.find({}).toArray();
         res.send(result);
       } catch (error) {
-        res.status(500).send({ message: "Failed to load users" });
+        console.error(error);
+        res.status(500).send({
+          message: "Failed to load users"
+        });
       }
     });
 
+    // Get All Jobs
+    app.get('/jobs', async (req, res) => {
+      try {
+        const result = await jobsCollection.find({}).toArray();
+
+        res.status(200).send(result);
+      } catch (error) {
+        console.error("Error fetching jobs:", error);
+
+        res.status(500).send({
+          message: "Failed to load jobs"
+        });
+      }
+    });
+
+    // Delete Job
+    app.delete('/jobs/:id', async (req, res) => {
+      try {
+        const { id } = req.params;
+
+        if (!ObjectId.isValid(id)) {
+          return res.status(400).send({
+            message: "Invalid job ID"
+          });
+        }
+
+        const result = await jobsCollection.deleteOne({
+          _id: new ObjectId(id)
+        });
+
+        if (result.deletedCount === 0) {
+          return res.status(404).send({
+            message: "Job not found"
+          });
+        }
+
+        res.status(200).send({
+          message: "Job deleted successfully"
+        });
+
+      } catch (error) {
+        console.error("Error deleting job:", error);
+
+        res.status(500).send({
+          message: "Failed to delete job"
+        });
+      }
+    });
+
+    // Start Server
     app.listen(port, () => {
       console.log(`Server running on port ${port}`);
     });
