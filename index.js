@@ -45,19 +45,46 @@ async function startServer() {
     });
 
     // Get All Jobs
-    app.get('/jobs', async (req, res) => {
-      try {
-        const result = await jobsCollection.find({}).toArray();
+    // Get All Jobs
 
-        res.status(200).send(result);
-      } catch (error) {
-        console.error("Error fetching jobs:", error);
+// Get Jobs with MongoDB Filters
+app.get('/jobs', async (req, res) => {
+  try {
+    const query = {};
 
-        res.status(500).send({
-          message: "Failed to load jobs"
-        });
-      }
+    console.log("Received filters:", req.query);
+
+    // Filter by one or multiple job types
+    if (req.query.jobType) {
+      const types = String(req.query.jobType)
+        .split(",")
+        .filter(Boolean);
+
+      query.jobType = { $in: types };
+    }
+
+    // Filter by remote status
+    if (req.query.isRemote !== undefined) {
+      query.isRemote = req.query.isRemote === "true";
+    }
+
+    console.log("MongoDB query:", query);
+
+    const result = await jobsCollection
+      .find(query)
+      .toArray();
+
+    res.status(200).json(result);
+
+  } catch (error) {
+    console.error("Error fetching jobs:", error);
+
+    res.status(500).json({
+      message: "Failed to load jobs"
     });
+  }
+});
+
 
     // Delete Job
     app.delete('/jobs/:id', async (req, res) => {
